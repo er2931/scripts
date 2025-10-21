@@ -144,7 +144,9 @@ def set_windows_titlebar(hwnd, caption_rgb, text_rgb, dark=True):
 class BookmarkManager:
     def __init__(self, root):
         self.root = root
-        self.root.title("📁 Bookmark Manager")
+        base = os.path.splitext(os.path.basename(self.load_last_file() or DEFAULT_FILE))[0]
+        self.root.title(f"📁 Bookmark Manager — {base}")
+
 
         ensure_default_icons()
 
@@ -748,6 +750,7 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = BookmarkManager(root)
     root.mainloop()
+
 
 
 
