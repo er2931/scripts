@@ -338,8 +338,9 @@ class BookmarkManager:
             icon = "🔗" if kind == "url" else ("📄" if kind == "file" else "🗀")
             self.tree.insert("", tk.END, text=f"{icon} {bm['name']}")
         title = " / ".join(self.path) if self.path else "Root"
-        base = os.path.splitext(os.path.basename(self.file_path))[0]
-        self.root.title(f"📁 {base} — {title}")
+        base = os.path.splitext(os.path.basename(self.file_path))[0]  # filename without .json
+        self.root.title(f"📁 Bookmark Manager — {title} (Current: {base})")
+
 
     def go_back(self):
         if self.path:
@@ -747,4 +748,5 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = BookmarkManager(root)
     root.mainloop()
+
 
