@@ -1,0 +1,309 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tome of the Codex — Phase V</title>
+<style>
+  :root{ --bg:#070b10; --ink:#cfe6ff; --accent:#7fb1ff; --gold:#ffd97a; --violet:#b08cff; --muted:#94a9be; }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:#070b10;color:#d7e6f8;font-family:Inter,Segoe UI,system-ui,Arial,sans-serif}
+  .layout{display:grid;grid-template-columns: 340px 1fr;grid-template-rows:auto 1fr;gap:14px;max-width:1320px;margin:20px auto;padding:12px}
+  header{grid-column:1/-1;background:linear-gradient(180deg,#0e1620,#0c1219);border:1px solid #1b2834;border-radius:16px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 18px 60px rgba(0,0,0,.45), inset 0 0 80px rgba(0,0,0,.25)}
+  h1{font-size:18px;letter-spacing:.8px;margin:0;color:#e6f2ff}
+  .badge{font-size:12px;color:#9fb8d3;opacity:.9}
+  .left{background:linear-gradient(#0e151c,#0c1218);border:1px solid #1b2834;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:12px}
+  .section{border:1px solid #1f2c39;border-radius:14px;padding:10px 10px 12px;background:radial-gradient(600px 220px at 50% -10%, rgba(160,200,255,.06), transparent), #0c1218}
+  .section h3{margin:0 0 8px;font-size:13px;letter-spacing:.5px;color:#d9e7fb}
+  .btn{padding:9px 11px;border-radius:10px;border:1px solid #2b3b4d;background:#101a25;color:#cfe2fb;cursor:pointer}
+  .btn:hover{background:#132132}
+  .row{display:flex;gap:8px}
+  .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; background:#0c1520;border:1px solid #2a3b4f;border-radius:6px;padding:2px 6px;font-size:12px;color:#bcd2ea}
+
+  .canvas{position:relative;background:#0a1016;border:1px solid #1b2834;border-radius:16px;overflow:hidden}
+  svg{display:block;width:100%;height:100%;filter: drop-shadow(0 0 5px rgba(140,180,255,.35))}
+  #gl{position:absolute;inset:0;z-index:0}
+  #particles{position:absolute;inset:0;z-index:1}
+  #codex{position:relative;z-index:2}
+  .toolbar{position:absolute;inset:12px 12px auto auto;display:flex;gap:8px;z-index:3}
+  .hint{position:absolute;inset:auto 14px 14px 14px;opacity:.75;font-size:12px;color:#a6bacf;line-height:1.4;z-index:3}
+</style>
+</head>
+<body>
+<div class="layout">
+  <header>
+    <div>
+      <h1>Tome of the Codex — Phase V</h1>
+      <div class="badge">Shader Aura • Particle Field • Rune Grammar</div>
+    </div>
+    <div>
+      <button class="btn" id="exportBtn">Export PNG</button>
+    </div>
+  </header>
+
+  <aside class="left">
+    <div class="section">
+      <h3>Chapter</h3>
+      <div class="row">
+        <button class="btn" data-ch="awakening">Awakening</button>
+        <button class="btn" data-ch="transformation">Transform</button>
+        <button class="btn" data-ch="realization">Realize</button>
+        <button class="btn" data-ch="shadow">Shadow</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Sigil</h3>
+      <div class="row"><button class="btn" id="newSigil">Generate</button><button class="btn" id="mutate">Mutate</button></div>
+      <div class="row" style="margin-top:8px">
+        <label style="font-size:12px;color:#a9bed6;display:flex;align-items:center;gap:6px">Runes <input id="runes" type="range" min="6" max="60" value="26"></label>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Rune Grammar Composer</h3>
+      <div class="row"><button class="btn" id="compose">Compose Phrase</button><button class="btn" id="clearPhrase">Clear</button></div>
+      <div id="phraseOut" style="margin-top:8px;font-size:12px;color:#bcd0e6;min-height:40px"></div>
+      <div style="font-size:12px;color:#93abc5;margin-top:6px">
+        Grammar builds non-human glyph “sentences” (subject • action • energy • locus). Click **Compose** to inscribe around the circle.
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Particles & Aura</h3>
+      <div class="row">
+        <label style="font-size:12px;color:#a9bed6;display:flex;align-items:center;gap:6px">Density<input id="dens" type="range" min="50" max="600" value="240"></label>
+        <label style="font-size:12px;color:#a9bed6;display:flex;align-items:center;gap:6px">Flow<input id="flow" type="range" min="1" max="200" value="60"></label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" id="pause">Pause</button>
+        <button class="btn" id="pulse">Pulse</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="canvas">
+    <canvas id="gl"></canvas>
+    <canvas id="particles"></canvas>
+    <svg id="codex" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <circle cx="500" cy="500" r="435" fill="none" stroke="#1b2834" stroke-width="22"/>
+      <g id="runes" stroke-linecap="round" stroke-linejoin="round" fill="none"></g>
+      <g id="links" stroke="#7fb1ff" stroke-width="2" opacity=".75"></g>
+      <g id="phrase" stroke-linecap="round" stroke-linejoin="round" fill="none"></g>
+    </svg>
+    <div class="toolbar">
+      <button class="btn" id="linksToggle">Links</button>
+    </div>
+    <div class="hint">Phase V adds a WebGL aura, 2D particle field, and a procedural rune grammar that writes non‑human sentences around the circle.</div>
+  </main>
+</div>
+
+<script>
+(function(){
+  const CX=500, CY=500, R=360;
+  const chBtns=[...document.querySelectorAll('[data-ch]')];
+  const newBtn=document.getElementById('newSigil');
+  const mutBtn=document.getElementById('mutate');
+  const linksToggle=document.getElementById('linksToggle');
+  const runesRange=document.getElementById('runes');
+  const composeBtn=document.getElementById('compose');
+  const clearPhraseBtn=document.getElementById('clearPhrase');
+  const phraseOut=document.getElementById('phraseOut');
+  const dens=document.getElementById('dens');
+  const flow=document.getElementById('flow');
+  const pauseBtn=document.getElementById('pause');
+  const pulseBtn=document.getElementById('pulse');
+  const exportBtn=document.getElementById('exportBtn');
+
+  const svg=document.getElementById('codex');
+  const gRunes=document.getElementById('runes');
+  const gLinks=document.getElementById('links');
+  const gPhrase=document.getElementById('phrase');
+
+  let playing=true, showLinks=true, chapter='awakening';
+  let seed=Math.floor(Math.random()*1e9);
+  let runeNodes=[], links=[];
+
+  const Pal={
+    awakening:   { base:'#9bd0ff', accent:'#7fb1ff', hue:205 },
+    transformation:{ base:'#bca3ff', accent:'#9a7dff', hue:270 },
+    realization: { base:'#ffd97a', accent:'#ffbe5e', hue:48  },
+    shadow:      { base:'#8da0b3', accent:'#6f8398', hue:210 }
+  };
+  const GLYPHS=[
+    "M0,0 L10,-20 L20,0","M0,-20 L0,10 M-10,0 L10,0","M0,-20 L0,10 M0,-6 L12,-16",
+    "M-10,-10 L10,-10 M0,-20 L0,5","M-8,-20 L0,-5 L8,-20 M0,-5 L0,8","M-8,-10 L8,-10 M-4,0 L4,0",
+    "M0,-20 C 10,-10, 10,0, 0,10 C -10,0, -10,-10, 0,-20","M-8,-18 L8,0 M8,-18 L-8,0",
+    "M0,-20 L0,8 M-10,-6 L10,-6","M-10,-20 L10,0 M10,-20 L-10,0"
+  ];
+
+  function el(tag,attrs){ const n=document.createElementNS('http://www.w3.org/2000/svg',tag); for(const k in attrs){ n.setAttribute(k,attrs[k]); } return n; }
+  function sRand(){ seed=(1664525*seed+1013904223)%0xffffffff; return seed/0xffffffff; }
+
+  function setChapter(c){ chapter=c; }
+
+  chBtns.forEach(b=> b.addEventListener('click', ()=>setChapter(b.dataset.ch)));
+  setChapter('awakening');
+
+  function clearSigil(){ runeNodes=[]; links=[]; gRunes.innerHTML=''; gLinks.innerHTML=''; }
+  function makeSigil(){
+    clearSigil();
+    const count=parseInt(runesRange.value,10);
+    let idx=0;
+    for(let i=0;i<count;i++){
+      const a=(i/count)*Math.PI*2 - Math.PI/2 + (sRand()-0.5)*0.2;
+      const rr=R + (sRand()-0.5)*10;
+      const x=CX + Math.cos(a)*rr, y=CY + Math.sin(a)*rr;
+      const g=el('g',{transform:`translate(${x},${y}) rotate(${a*180/Math.PI+90})`});
+      const p=el('path',{d:GLYPHS[(idx)%GLYPHS.length], stroke:Pal[chapter].base, 'stroke-width':6, filter:'url(#soft)'});
+      g.appendChild(p); gRunes.appendChild(g);
+      runeNodes.push({g,p,x,y,a,rr});
+      idx++;
+    }
+    // links
+    for(let k=0;k<Math.round(count*0.6);k++){
+      const a=Math.floor(Math.random()*runeNodes.length);
+      const b=Math.floor(Math.random()*runeNodes.length);
+      if(a===b) continue;
+      const n1=runeNodes[a], n2=runeNodes[b];
+      const midx=(n1.x+n2.x)/2, midy=(n1.y+n2.y)/2 + (Math.random()*60-30);
+      const path=el('path',{d:`M ${n1.x},${n1.y} Q ${midx},${midy} ${n2.x},${n2.y}`, stroke:Pal[chapter].accent, 'stroke-width':2, opacity:.25});
+      gLinks.appendChild(path);
+      links.push(path);
+    }
+  }
+  function mutate(){ seed=(seed+Math.floor(Math.random()*1e6))%0xffffffff; makeSigil(); }
+
+  newBtn.addEventListener('click', makeSigil);
+  mutBtn.addEventListener('click', mutate);
+  linksToggle.addEventListener('click', ()=>{ showLinks=!showLinks; gLinks.style.display=showLinks?'block':'none'; });
+
+  // --------- Rune Grammar (non-human) ---------
+  // Define 4 rune families (Subject, Action, Energy, Locus) as indexes into GLYPHS
+  const Fam = {
+    S:[0,6,7], A:[2,3,8], E:[1,4,5], L:[9,0,7]
+  };
+  function composePhrase(){
+    // pick pattern like S-A-E-L or S-E-A-L randomly
+    const patterns=[['S','A','E','L'],['S','E','A','L'],['E','S','A','L']];
+    const pat=patterns[Math.floor(Math.random()*patterns.length)];
+    const chosen = pat.map(k=>{ const arr=Fam[k]; return arr[Math.floor(Math.random()*arr.length)]; });
+    gPhrase.innerHTML='';
+    // place around inner ring
+    const n=chosen.length; const r=230;
+    for(let i=0;i<n;i++){
+      const a=(i/n)*Math.PI*2 - Math.PI/2;
+      const x=CX+Math.cos(a)*r, y=CY+Math.sin(a)*r;
+      const g=el('g',{transform:`translate(${x},${y}) rotate(${a*180/Math.PI+90})`});
+      const p=el('path',{d:GLYPHS[chosen[i]], stroke:Pal[chapter].base, 'stroke-width':5, filter:'url(#soft)'});
+      g.appendChild(p); gPhrase.appendChild(g);
+    }
+    phraseOut.textContent = 'Pattern: ' + pat.join(' • ') + '  |  Glyphs: ' + chosen.join(', ');
+  }
+  composeBtn.addEventListener('click', composePhrase);
+  clearPhraseBtn.addEventListener('click', ()=>{ gPhrase.innerHTML=''; phraseOut.textContent=''; });
+
+  // --------- Particle Field (2D canvas) ---------
+  const pc=document.getElementById('particles'); const pctx=pc.getContext('2d');
+  function resize(){ const r=svg.getBoundingClientRect(); pc.width=r.width; pc.height=r.height; glCanvas.width=r.width; glCanvas.height=r.height; }
+  window.addEventListener('resize', resize);
+  resize();
+  let particles=[];
+  function initParticles(){
+    particles=[];
+    const n=parseInt(dens.value,10);
+    for(let i=0;i<n;i++){
+      particles.push({x:Math.random()*pc.width, y:Math.random()*pc.height, vx:(Math.random()-0.5)*0.5, vy:(Math.random()-0.5)*0.5, a:Math.random()});
+    }
+  }
+  dens.addEventListener('input', initParticles);
+  initParticles();
+  let paused=false;
+  pauseBtn.addEventListener('click', ()=>{ paused=!paused; pauseBtn.textContent=paused?'Play':'Pause'; });
+  pulseBtn.addEventListener('click', ()=>{ pulse+=1; });
+
+  let pulse=0;
+  function tick2D(){
+    if(!paused){
+      const speed=parseInt(flow.value,10)/60;
+      pctx.clearRect(0,0,pc.width,pc.height);
+      pctx.globalCompositeOperation='lighter';
+      for(const p of particles){
+        p.vx += (Math.random()-0.5)*0.02 + Math.sin(p.y*0.01 + pulse)*0.02;
+        p.vy += (Math.random()-0.5)*0.02 + Math.cos(p.x*0.01 + pulse)*0.02;
+        p.x += p.vx * speed; p.y += p.vy * speed;
+        if(p.x<0) p.x+=pc.width; if(p.x>pc.width) p.x-=pc.width;
+        if(p.y<0) p.y+=pc.height; if(p.y>pc.height) p.y-=pc.height;
+        pctx.fillStyle='rgba(140,180,255,0.12)';
+        pctx.beginPath(); pctx.arc(p.x,p.y,1.2,0,Math.PI*2); pctx.fill();
+      }
+      pulse *= 0.96;
+    }
+    requestAnimationFrame(tick2D);
+  }
+  requestAnimationFrame(tick2D);
+
+  // --------- WebGL Aura (single fragment shader) ---------
+  const glCanvas=document.getElementById('gl');
+  const gl=glCanvas.getContext('webgl');
+  const vsSrc=`attribute vec2 p; void main(){ gl_Position=vec4(p,0.0,1.0);} `;
+  const fsSrc=`precision highp float;
+    uniform vec2 r; uniform float t; uniform vec3 col;
+    float ring(vec2 uv, float rad, float w){ float d=abs(length(uv)-rad); return smoothstep(w,0.0,d); }
+    void main(){
+      vec2 uv = (gl_FragCoord.xy / r) * 2.0 - 1.0; uv.x *= r.x/r.y;
+      float d = length(uv);
+      float a = 0.0;
+      // soft core
+      a += 0.35 * exp(-8.0*d*d);
+      // breathing rings
+      float e = 0.5 + 0.5*sin(t*0.6);
+      a += 0.25 * ring(uv, 0.55 + 0.02*sin(t*0.9), 0.02+0.01*e);
+      a += 0.18 * ring(uv, 0.85 + 0.03*sin(t*1.3), 0.02);
+      // starburst
+      float ang = atan(uv.y, uv.x);
+      a += 0.12 * pow(abs(sin(6.0*ang + t*0.7)), 8.0) * (1.0-d);
+      gl_FragColor = vec4(col * a, a);
+    }`;
+  function compile(type,src){ const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); return s; }
+  const pr=gl.createProgram(); gl.attachShader(pr, compile(gl.VERTEX_SHADER,vsSrc)); gl.attachShader(pr, compile(gl.FRAGMENT_SHADER,fsSrc)); gl.linkProgram(pr);
+  const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  gl.useProgram(pr); const locP=gl.getAttribLocation(pr,'p'); gl.enableVertexAttribArray(locP); gl.vertexAttribPointer(locP, 2, gl.FLOAT, false, 0, 0);
+  const uR=gl.getUniformLocation(pr,'r'); const uT=gl.getUniformLocation(pr,'t'); const uC=gl.getUniformLocation(pr,'col');
+  function tickGL(time){
+    gl.viewport(0,0,glCanvas.width,glCanvas.height);
+    const col = chapter==='realization'? [1.0,0.85,0.45] : chapter==='transformation'? [0.72,0.55,1.0] : chapter==='shadow'? [0.6,0.68,0.78] : [0.62,0.82,1.0];
+    gl.uniform2f(uR, glCanvas.width, glCanvas.height); gl.uniform1f(uT, time*0.001); gl.uniform3fv(uC, col);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(tickGL);
+  }
+  requestAnimationFrame(tickGL);
+
+  // Export PNG
+  exportBtn.addEventListener('click', ()=>{
+    // Compose: WebGL aura + particles + SVG sigil to single canvas
+    const r=svg.getBoundingClientRect();
+    const c=document.createElement('canvas'); c.width=r.width; c.height=r.height; const ctx=c.getContext('2d');
+    // draw aura
+    ctx.drawImage(glCanvas,0,0);
+    // draw particles
+    ctx.drawImage(pc,0,0);
+    // draw svg
+    const xml=new XMLSerializer().serializeToString(svg); const img=new Image();
+    img.onload=()=>{ ctx.drawImage(img,0,0,r.width,r.height); const url=c.toDataURL('image/png'); const a=document.createElement('a'); a.href=url; a.download='tome_phase_v.png'; a.click(); };
+    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(xml);
+  });
+
+  // initial
+  makeSigil();
+
+})();</script>
+</body>
+</html>

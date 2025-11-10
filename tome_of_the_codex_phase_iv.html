@@ -1,0 +1,460 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tome of the Codex — Phase IV</title>
+<style>
+  :root{ --bg:#0b0f14; --ink:#cfe6ff; --accent:#7fb1ff; --gold:#ffd97a; --violet:#b08cff; --muted:#94a9be; }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:radial-gradient(1200px 900px at 50% 55%, #0f151c 0%, var(--bg) 60%, #06090d 100%);color:#d7e6f8;font-family:Inter,Segoe UI,system-ui,Arial,sans-serif}
+  .layout{display:grid;grid-template-columns: 330px 1fr;grid-template-rows:auto 1fr;gap:14px;max-width:1280px;margin:20px auto;padding:12px}
+  header{grid-column:1/-1;background:linear-gradient(180deg,#0e1620,#0c1219);border:1px solid #1b2834;border-radius:16px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 18px 60px rgba(0,0,0,.45), inset 0 0 80px rgba(0,0,0,.25)}
+  h1{font-size:18px;letter-spacing:.8px;margin:0;color:#e6f2ff}
+  .badge{font-size:12px;color:#9fb8d3;opacity:.9}
+  .left{background:linear-gradient(#0e151c,#0c1218);border:1px solid #1b2834;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:12px}
+  .section{border:1px solid #1f2c39;border-radius:14px;padding:10px 10px 12px;background:radial-gradient(600px 220px at 50% -10%, rgba(160,200,255,.06), transparent), #0c1218}
+  .section h3{margin:0 0 8px;font-size:13px;letter-spacing:.5px;color:#d9e7fb}
+  .chapters button{width:100%;margin:5px 0;padding:10px 10px;border-radius:10px;border:1px solid #243244;background:#0f1721;color:#cfe2fb;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:space-between}
+  .chapters button:hover{border-color:#2b3b4d;background:#121b26}
+  .chapters button.active{outline:2px solid #34506d; background:#122033}
+  .swatch{width:14px;height:14px;border-radius:50%;border:1px solid #314559}
+  .swatch.blue{background:#9dd0ff}.swatch.violet{background:#b08cff}.swatch.gold{background:#ffd97a}.swatch.shadow{background:#556170}
+  .controls label{display:block;font-size:12px;color:#a9bed6;margin:10px 0 4px}
+  .controls input[type=range]{width:100%}
+  .controls .row{display:flex;gap:8px}.controls .row > *{flex:1}
+  .btn{padding:9px 11px;border-radius:10px;border:1px solid #2b3b4d;background:#101a25;color:#cfe2fb;cursor:pointer}
+  .btn:hover{background:#132132}
+  .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; background:#0c1520;border:1px solid #2a3b4f;border-radius:6px;padding:2px 6px;font-size:12px;color:#bcd2ea}
+
+  .canvas{background:linear-gradient(#0e141a,#0a1015);border:1px solid #1b2834;border-radius:16px;padding:0;position:relative;overflow:hidden}
+  .toolbar{position:absolute;inset:12px 12px auto auto;display:flex;gap:8px;z-index:3}
+  .toolbar .btn{font-size:12px;padding:7px 10px}
+  .hint{position:absolute;inset:auto 14px 14px 14px;opacity:.75;font-size:12px;color:#a6bacf;line-height:1.4;z-index:1}
+  svg{display:block;width:100%;height:100%;filter: drop-shadow(0 0 5px rgba(140,180,255,.35))}
+  .grain, .grain::before{position:absolute;inset:-50%}
+  .grain{opacity:.10;mix-blend-mode:soft-light;pointer-events:none}
+  .grain::before{content:""; background-image:url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" width=\"400\" height=\"400\">\
+<filter id=\"n\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.95\" numOctaves=\"2\"/></filter>\
+<rect width=\"100%\" height=\"100%\" filter=\"url(%23n)\" opacity=\"0.8\"/></svg>');animation: move 22s linear infinite;}
+  @keyframes move{from{transform:translate3d(0,0,0) scale(2)} to{transform:translate3d(-25%,-25%,0) scale(2)}}
+
+  .mini{display:grid;grid-template-columns: repeat(6, 1fr); gap:8px; margin-top:8px}
+  .mini button{padding:8px;border-radius:8px;border:1px solid #253346;background:#0f1721;color:#cfe2fb;cursor:pointer}
+  .mini button:hover{background:#122033}
+</style>
+</head>
+<body>
+<div class="layout">
+  <header>
+    <div>
+      <h1>Tome of the Codex — Phase IV</h1>
+      <div class="badge">Brush Palettes • Rune Physics • Ritual Scheduler</div>
+    </div>
+    <div>
+      <button class="btn" id="exportBtn">Export PNG</button>
+    </div>
+  </header>
+
+  <aside class="left">
+    <div class="section chapters">
+      <h3>Chapters</h3>
+      <button data-chapter="awakening"><span>Awakening</span><span class="swatch blue"></span></button>
+      <button data-chapter="transformation"><span>Transformation</span><span class="swatch violet"></span></button>
+      <button data-chapter="realization"><span>Realization</span><span class="swatch gold"></span></button>
+      <button data-chapter="shadow"><span>Shadow</span><span class="swatch shadow"></span></button>
+    </div>
+
+    <div class="section controls">
+      <h3>Sigil Controls</h3>
+      <label>Rune Count</label><input id="runeCount" type="range" min="6" max="60" value="24">
+      <div class="row">
+        <div><label>Entropy</label><input id="entropy" type="range" min="0" max="100" value="50"></div>
+        <div><label>Pulse Speed</label><input id="speed" type="range" min="5" max="240" value="100"></div>
+      </div>
+      <div class="row"><button class="btn" id="newSigil">Generate Sigil</button><button class="btn" id="saveEntry">Save Entry</button></div>
+      <div style="font-size:12px;color:#a9bed6;margin-top:8px">
+        <b>Shortcuts</b> — <span class="kbd">Space</span> Play/Pause • <span class="kbd">L</span> Links • <span class="kbd">G</span> Glow • <span class="kbd">N</span> New • <span class="kbd">S</span> Save • <span class="kbd">1–4</span> Chapters
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Create Mode — Brush Palettes</h3>
+      <div class="row">
+        <button class="btn" id="createToggle">Create: Off</button>
+        <button class="btn" id="undoBtn">Undo</button>
+        <button class="btn" id="redoBtn">Redo</button>
+      </div>
+      <div style="margin-top:8px">
+        <div class="mini" id="paletteMini"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Rune Physics</h3>
+      <div class="row">
+        <div><label>Gravity</label><input id="grav" type="range" min="0" max="100" value="20"></div>
+        <div><label>Orbit</label><input id="orbit" type="range" min="0" max="100" value="35"></div>
+      </div>
+      <div class="row">
+        <div><label>Attraction</label><input id="attract" type="range" min="0" max="100" value="25"></div>
+        <div><label>Friction</label><input id="friction" type="range" min="0" max="100" value="10"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Ritual Scheduler</h3>
+      <div class="row">
+        <select id="ritualPreset" class="btn" style="flex:1">
+          <option value="dawn">Dawn Cycle (Awakening → Realization)</option>
+          <option value="storm">Storm of Change (Transformation)</option>
+          <option value="eclipse">Eclipse (Shadow → Realization)</option>
+        </select>
+        <button class="btn" id="startRitual">Start</button>
+        <button class="btn" id="stopRitual">Stop</button>
+      </div>
+      <div style="font-size:12px;color:#a9bed6;margin-top:6px">Runs timed sequences of chapters, sigils, and pulses.</div>
+    </div>
+
+    <div class="section">
+      <h3>Saved Entries</h3>
+      <div id="entriesList" style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow:auto;"></div>
+    </div>
+  </aside>
+
+  <main class="canvas" tabindex="0" id="canvasFocus">
+    <div class="toolbar">
+      <button class="btn" id="playPause">Pause</button>
+      <button class="btn" id="centerGlow">Center Glow</button>
+      <button class="btn" id="linksToggle">Links</button>
+    </div>
+    <svg id="codex" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#c2e5ff" stop-opacity="1"/>
+          <stop offset="55%" stop-color="#87bfff" stop-opacity=".55"/>
+          <stop offset="100%" stop-color="#5c89ff" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <circle cx="500" cy="500" r="435" fill="none" stroke="#1b2834" stroke-width="22"/>
+      <circle id="coreBg" cx="500" cy="500" r="420" fill="url(#coreGlow)" opacity=".14"/>
+      <g id="rings" stroke="#9cc9ff" stroke-width="2" opacity=".55">
+        <circle cx="500" cy="500" r="360"/><circle cx="500" cy="500" r="275"/><circle cx="500" cy="500" r="190"/>
+      </g>
+      <g id="tri" fill="none" stroke="#bfe4ff" stroke-width="10" stroke-linecap="round" filter="url(#soft)">
+        <path d="M500 260 C 540 330, 540 380, 500 440 C 460 380, 460 330, 500 260 Z"/>
+        <path d="M430 335 C 470 405, 470 455, 430 515 C 390 455, 390 405, 430 335 Z"/>
+        <path d="M570 335 C 610 405, 610 455, 570 515 C 530 455, 530 405, 570 335 Z"/>
+      </g>
+      <g id="runes" stroke-linecap="round" stroke-linejoin="round" fill="none"></g>
+      <g id="links" stroke="#7fb1ff" stroke-width="2" opacity=".75"></g>
+      <g id="brush" stroke-linecap="round" stroke-linejoin="round" fill="none"></g>
+    </svg>
+
+    <div class="grain"></div>
+    <div class="hint">Phase IV: Brush palettes, physics, and scheduled rituals.</div>
+  </main>
+</div>
+
+<script>
+(function(){
+  const CX=500, CY=500;
+  const svg = document.getElementById('codex');
+  const gRunes = document.getElementById('runes');
+  const gLinks = document.getElementById('links');
+  const gBrush = document.getElementById('brush');
+  const tri = document.getElementById('tri');
+  const coreBg = document.getElementById('coreBg');
+
+  const chapterBtns=[...document.querySelectorAll('[data-chapter]')];
+  const runeCountEl = document.getElementById('runeCount');
+  const entropyEl = document.getElementById('entropy');
+  const speedEl = document.getElementById('speed');
+  const newSigilBtn = document.getElementById('newSigil');
+  const saveBtn = document.getElementById('saveEntry');
+  const entriesList = document.getElementById('entriesList');
+  const playPauseBtn = document.getElementById('playPause');
+  const linksToggleBtn = document.getElementById('linksToggle');
+  const centerGlowBtn = document.getElementById('centerGlow');
+
+  const gravEl = document.getElementById('grav');
+  const orbitEl = document.getElementById('orbit');
+  const attractEl = document.getElementById('attract');
+  const frictionEl = document.getElementById('friction');
+
+  const createToggleBtn = document.getElementById('createToggle');
+  const undoBtn = document.getElementById('undoBtn');
+  const redoBtn = document.getElementById('redoBtn');
+  const paletteMini = document.getElementById('paletteMini');
+
+  const ritualPreset = document.getElementById('ritualPreset');
+  const startRitual = document.getElementById('startRitual');
+  const stopRitual = document.getElementById('stopRitual');
+
+  const exportBtn = document.getElementById('exportBtn');
+
+  let playing=true, showLinks=true, centerGlow=true, chapter='awakening';
+  let seed=Math.floor(Math.random()*1e9);
+  let runeNodes=[], links=[], particles=[];
+  let brushStack=[], redoStack=[], createMode=false, currentGlyph=0;
+  let ritualTimer=null;
+
+  const Pal = {
+    awakening:   { base:'#9bd0ff', accent:'#7fb1ff', core:'#cfe6ff', hue:205, glyphs:[0,1,6,7,3,5] },
+    transformation:{ base:'#bca3ff', accent:'#9a7dff', core:'#e7ddff', hue:270, glyphs:[2,7,9,5,8,1] },
+    realization: { base:'#ffd97a', accent:'#ffbe5e', core:'#fff0c8', hue:48,  glyphs:[6,4,3,2,8,0] },
+    shadow:      { base:'#8da0b3', accent:'#6f8398', core:'#c5d2df', hue:210, glyphs:[9,5,1,7,2,3] }
+  };
+
+  // 10 glyph shapes: no human letters
+  const GLYPHS=["M0,0 L10,-20 L20,0","M0,-20 L0,10 M-10,0 L10,0","M0,-20 L0,10 M0,-6 L12,-16","M-10,-10 L10,-10 M0,-20 L0,5","M-8,-20 L0,-5 L8,-20 M0,-5 L0,8","M-8,-10 L8,-10 M-4,0 L4,0","M0,-20 C 10,-10, 10,0, 0,10 C -10,0, -10,-10, 0,-20","M-8,-18 L8,0 M8,-18 L-8,0","M0,-20 L0,8 M-10,-6 L10,-6","M-10,-20 L10,0 M10,-20 L-10,0"];
+
+  function el(tag,attrs){ const n=document.createElementNS('http://www.w3.org/2000/svg',tag); for(const k in attrs){ n.setAttribute(k,attrs[k]); } return n; }
+  function hsl(h,s,l){ return `hsl(${h} ${s}% ${l}%)`; }
+  function rand(a,b){ return a + Math.random()*(b-a); }
+  function sRand(){ seed=(1664525*seed+1013904223)%0xffffffff; return seed/0xffffffff; }
+
+  function setChapter(name){
+    chapter=name; chapterBtns.forEach(b=> b.classList.toggle('active', b.dataset.chapter===name));
+    const pal=Pal[chapter]; tri.setAttribute('stroke', pal.core);
+    coreBg.setAttribute('opacity', centerGlow?'.14':'0');
+    document.documentElement.style.setProperty('--accent', pal.accent);
+    document.documentElement.style.setProperty('--ink', pal.base);
+    buildPaletteButtons();
+  }
+  chapterBtns.forEach(b=> b.addEventListener('click', ()=> setChapter(b.dataset.chapter)));
+  setChapter('awakening');
+
+  function clearSigil(){ runeNodes=[]; links=[]; particles=[]; gRunes.innerHTML=''; gLinks.innerHTML=''; }
+
+  function makeSigil(count, entropy, smooth=false){
+    const pal=Pal[chapter];
+    const tempRunes=el('g',{}), tempLinks=el('g',{});
+    const rings=[{r:330,n:Math.round(count*0.45),w:10,wid:5},{r:245,n:Math.round(count*0.33),w:14,wid:6},{r:165,n:Math.round(count*0.22),w:18,wid:7}];
+    let idx=0; const newNodes=[];
+    rings.forEach((ring,ri)=>{
+      for(let i=0;i<ring.n;i++){
+        const a=(i/ring.n)*Math.PI*2 - Math.PI/2 + (sRand()-0.5)*entropy*0.004;
+        const rr=ring.r + (sRand()-0.5)*entropy*0.6;
+        const x=CX+Math.cos(a)*rr, y=CY+Math.sin(a)*rr;
+        const g=el('g',{transform:`translate(${x},${y}) rotate(${a*180/Math.PI+90})`});
+        const gi = Pal[chapter].glyphs[(idx+ri)%Pal[chapter].glyphs.length];
+        const p=el('path',{d:GLYPHS[gi], stroke:pal.base, 'stroke-width':ring.wid, filter:'url(#soft)'});
+        g.appendChild(p); tempRunes.appendChild(g);
+        newNodes.push({g,p,a,ring,idx, x, y, vx:0, vy:0});
+        idx++;
+      }
+    });
+    function linkLocal(i,j){
+      if(i===j) return;
+      const n1=newNodes[i], n2=newNodes[j];
+      const p1={x:n1.x,y:n1.y}, p2={x:n2.x,y:n2.y};
+      const mid={x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2 + (Math.random()*60-30)};
+      const path=el('path',{d:`M ${p1.x},${p1.y} Q ${mid.x},${mid.y} ${p2.x},${p2.y}`, stroke:pal.accent, fill:'none', 'stroke-width':2, opacity:.25});
+      tempLinks.appendChild(path);
+      links.push({path,p1,p2,mid,life:0.8+Math.random()*1.8});
+    }
+    for(let k=0;k<Math.max(10, Math.round(count*0.6)); k++){ linkLocal(Math.floor(sRand()*newNodes.length), Math.floor(sRand()*newNodes.length)); }
+
+    if(!smooth){ clearSigil(); gRunes.append(...tempRunes.childNodes); gLinks.append(...tempLinks.childNodes); runeNodes=newNodes; return; }
+
+    const oldRunes=gRunes.cloneNode(true), oldLinks=gLinks.cloneNode(true);
+    gRunes.innerHTML=''; gLinks.innerHTML='';
+    const groupOld=el('g',{opacity:'1'}), groupNew=el('g',{opacity:'0'});
+    const linksOld=el('g',{opacity:'1'}), linksNew=el('g',{opacity:'0'});
+    groupOld.append(...oldRunes.childNodes); groupNew.append(...tempRunes.childNodes);
+    linksOld.append(...oldLinks.childNodes); linksNew.append(...tempLinks.childNodes);
+    gRunes.append(groupOld, groupNew); gLinks.append(linksOld, linksNew);
+    const start=performance.now(), DUR=900;
+    function fade(now){
+      const t=Math.min(1,(now-start)/DUR);
+      groupOld.setAttribute('opacity', String(1-t)); linksOld.setAttribute('opacity', String(1-t));
+      groupNew.setAttribute('opacity', String(t)); linksNew.setAttribute('opacity', String(t*0.8));
+      if(t<1) requestAnimationFrame(fade); else { gRunes.innerHTML=''; gLinks.innerHTML=''; gRunes.append(...groupNew.childNodes); gLinks.append(...linksNew.childNodes); runeNodes=newNodes; }
+    }
+    requestAnimationFrame(fade);
+  }
+
+  function generate(smooth=false){ seed=Math.floor(Math.random()*1e9); makeSigil(parseInt(runeCountEl.value,10), parseInt(entropyEl.value,10), smooth); }
+  newSigilBtn.addEventListener('click', ()=>generate(true));
+  generate(false);
+
+  // Export
+  exportBtn.addEventListener('click', ()=>{
+    const xml=new XMLSerializer().serializeToString(svg); const svg64='data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
+    const img=new Image(); img.onload=()=>{ const c=document.createElement('canvas'); c.width=2000; c.height=2000; const ctx=c.getContext('2d'); ctx.fillStyle='#0b0f14'; ctx.fillRect(0,0,c.width,c.height); ctx.drawImage(img,0,0,c.width,c.height); const url=c.toDataURL('image/png'); const a=document.createElement('a'); a.href=url; a.download='tome_phase_iv.png'; a.click(); }; img.src=svg64;
+  });
+
+  // Toggles
+  playPauseBtn.addEventListener('click', ()=>{ playing=!playing; playPauseBtn.textContent=playing?'Pause':'Play'; });
+  linksToggleBtn.addEventListener('click', ()=>{ showLinks=!showLinks; gLinks.style.display=showLinks?'block':'none'; });
+  centerGlowBtn.addEventListener('click', ()=>{ centerGlow=!centerGlow; coreBg.setAttribute('opacity', centerGlow?'.14':'0'); });
+
+  // Brush palettes per chapter
+  function buildPaletteButtons(){
+    paletteMini.innerHTML='';
+    const set = Pal[chapter].glyphs;
+    set.forEach((gi, idx)=>{
+      const b=document.createElement('button'); b.textContent = 'Rune ' + (idx+1);
+      b.onclick=()=>{ currentGlyph = gi; createMode = true; createToggleBtn.textContent='Create: On'; };
+      paletteMini.appendChild(b);
+    });
+  }
+  function redrawBrush(){
+    gBrush.innerHTML='';
+    brushStack.forEach(b=>{
+      const g=el('g',{transform:`translate(${b.x},${b.y}) rotate(${b.rot}) scale(${b.sc})`});
+      const p=el('path',{d:GLYPHS[b.gi], stroke:Pal[chapter].base, 'stroke-width':6*b.sc, filter:'url(#soft)'});
+      g.appendChild(p); gBrush.appendChild(g); b._g=g;
+    });
+  }
+  function undo(){ if(!brushStack.length) return; redoStack.push(brushStack.pop()); redrawBrush(); }
+  function redo(){ if(!redoStack.length) return; brushStack.push(redoStack.pop()); redrawBrush(); }
+
+  let placing=false;
+  svg.addEventListener('pointerdown', (e)=>{
+    if(!createMode) return;
+    placing=true;
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const spt = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const rune = {x:spt.x, y:spt.y, rot:rand(0,360), sc:rand(0.8,1.3), gi: currentGlyph || Pal[chapter].glyphs[0]};
+    brushStack.push(rune); redrawBrush();
+  });
+  window.addEventListener('pointerup', ()=> placing=false);
+  svg.addEventListener('pointermove', (e)=>{
+    if(!createMode || !placing) return;
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const spt = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const last = brushStack[brushStack.length-1];
+    const dist = Math.hypot(spt.x - last.x, spt.y - last.y);
+    if(dist > 22){
+      const rune = {x:spt.x, y:spt.y, rot:rand(0,360), sc:rand(0.8,1.3), gi: currentGlyph || Pal[chapter].glyphs[Math.floor(Math.random()*Pal[chapter].glyphs.length)]};
+      brushStack.push(rune); redrawBrush();
+    }
+  });
+  createToggleBtn.addEventListener('click', ()=>{ createMode=!createMode; createToggleBtn.textContent=createMode?'Create: On':'Create: Off'; });
+  undoBtn.addEventListener('click', undo); redoBtn.addEventListener('click', redo);
+  buildPaletteButtons();
+
+  // Save/Load entries
+  function saveEntry(){
+    const entry={ id:'codex-'+Date.now(), chapter, seed, count:parseInt(runeCountEl.value,10), entropy:parseInt(entropyEl.value,10), speed:parseInt(speedEl.value,10), brush:brushStack };
+    const all=JSON.parse(localStorage.getItem('codexEntries')||'[]'); all.unshift(entry);
+    localStorage.setItem('codexEntries', JSON.stringify(all)); renderEntries();
+  }
+  function renderEntries(){
+    const all=JSON.parse(localStorage.getItem('codexEntries')||'[]'); entriesList.innerHTML='';
+    all.forEach(e=>{
+      const row=document.createElement('div'); row.style.display='grid'; row.style.gridTemplateColumns='1fr auto auto'; row.style.gap='6px'; row.style.alignItems='center'; row.style.padding='6px'; row.style.border='1px solid #223142'; row.style.borderRadius='10px'; row.style.background='#0f1721';
+      const label=document.createElement('div'); label.textContent=`${new Date(parseInt(e.id.split('-')[1],10)).toLocaleString()} • ${e.chapter}`; label.style.fontSize='12px'; label.style.color='#bcd0e6';
+      const loadBtn=document.createElement('button'); loadBtn.className='btn'; loadBtn.textContent='Load';
+      loadBtn.onclick=()=>{ chapter=e.chapter; setChapter(chapter); seed=e.seed; runeCountEl.value=e.count; entropyEl.value=e.entropy; speedEl.value=e.speed; makeSigil(e.count,e.entropy,true); brushStack=e.brush||[]; redrawBrush(); };
+      const delBtn=document.createElement('button'); delBtn.className='btn'; delBtn.textContent='Delete';
+      delBtn.onclick=()=>{ const rest=all.filter(x=>x.id!==e.id); localStorage.setItem('codexEntries', JSON.stringify(rest)); renderEntries(); };
+      row.append(label,loadBtn,delBtn); entriesList.appendChild(row);
+    });
+  }
+  renderEntries();
+  saveBtn.addEventListener('click', saveEntry);
+
+  // Rune Physics (applies to generated rune nodes, not brush)
+  function physicsStep(dt){
+    const grav = parseInt(gravEl.value,10)/100;       // pull toward center
+    const orbit = parseInt(orbitEl.value,10)/100;     // tangential motion
+    const attract = parseInt(attractEl.value,10)/100; // mutual attraction
+    const friction = 1 - parseInt(frictionEl.value,10)/500; // damping
+
+    // Pairwise attraction (lightweight: sample a few neighbors)
+    for(let i=0;i<runeNodes.length;i++){
+      const n=runeNodes[i];
+      // center gravity
+      const dx=CX-n.x, dy=CY-n.y;
+      n.vx += dx*grav*dt*0.5;
+      n.vy += dy*grav*dt*0.5;
+      // orbit: add perpendicular component
+      const tangX = -dy, tangY = dx;
+      n.vx += tangX * orbit * dt * 0.0008;
+      n.vy += tangY * orbit * dt * 0.0008;
+      // neighbor attraction (sample next and random)
+      const j=(i+1)%runeNodes.length;
+      const m=runeNodes[j];
+      let ndx=m.x-n.x, ndy=m.y-n.y, d=Math.hypot(ndx,ndy) || 1;
+      const f = (attract*50)/(d);
+      n.vx += ndx * f * dt;
+      n.vy += ndy * f * dt;
+      // update position
+      n.vx *= friction; n.vy *= friction;
+      n.x += n.vx * dt; n.y += n.vy * dt;
+      // apply transform
+      const a = Math.atan2(n.y-CY, n.x-CX);
+      n.g.setAttribute('transform', `translate(${n.x},${n.y}) rotate(${a*180/Math.PI+90})`);
+    }
+
+    // Update links geometry
+    links.forEach(L=>{
+      const p1=L.p1, p2=L.p2;
+      L.mid.x = (p1.x + p2.x)/2;
+      L.mid.y = (p1.y + p2.y)/2 + (Math.random()*60-30);
+      L.path.setAttribute('d', `M ${p1.x},${p1.y} Q ${L.mid.x},${L.mid.y} ${p2.x},${p2.y}`);
+    });
+  }
+
+  // Ritual Scheduler
+  function runRitual(name){
+    stopRitualFn();
+    const steps = {
+      dawn: [
+        {t:0,   action: ()=>{ setChapter('awakening'); generate(true);} },
+        {t:6,   action: ()=>{ setChapter('transformation'); generate(true);} },
+        {t:12,  action: ()=>{ setChapter('realization'); generate(true);} },
+      ],
+      storm: [
+        {t:0,  action: ()=>{ setChapter('transformation'); generate(true);} },
+        {t:5,  action: ()=>{ entropyEl.value=80; generate(true);} },
+        {t:10, action: ()=>{ entropyEl.value=50; generate(true);} },
+      ],
+      eclipse: [
+        {t:0,  action: ()=>{ setChapter('shadow'); generate(true);} },
+        {t:7,  action: ()=>{ setChapter('realization'); generate(true);} },
+      ]
+    }[name];
+
+    let idx=0;
+    ritualTimer = setInterval(()=>{
+      if(idx >= steps.length){ stopRitualFn(); return; }
+      steps[idx].action(); idx++;
+    }, 1000* (steps.length>3 ? 5 : 7)); // simple pacing
+  }
+  function stopRitualFn(){ if(ritualTimer){ clearInterval(ritualTimer); ritualTimer=null; } }
+  startRitual.addEventListener('click', ()=> runRitual(ritualPreset.value));
+  stopRitual.addEventListener('click', stopRitualFn);
+
+  // Animation
+  let last=performance.now();
+  function tick(now){
+    const dt = (now - last)/16; // ~60fps scale
+    if(playing){ physicsStep(dt); }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  // Keyboard
+  document.addEventListener('keydown', (e)=>{
+    if(e.code==='Space'){ e.preventDefault(); playPauseBtn.click(); }
+    else if(e.key==='l'||e.key==='L'){ linksToggleBtn.click(); }
+    else if(e.key==='g'||e.key==='G'){ centerGlowBtn.click(); }
+    else if(e.key==='n'||e.key==='N'){ newSigilBtn.click(); }
+    else if(e.key==='s'||e.key==='S'){ saveBtn.click(); }
+    else if(e.key==='1'){ setChapter('awakening'); }
+    else if(e.key==='2'){ setChapter('transformation'); }
+    else if(e.key==='3'){ setChapter('realization'); }
+    else if(e.key==='4'){ setChapter('shadow'); }
+  });
+
+})();</script>
+</body>
+</html>

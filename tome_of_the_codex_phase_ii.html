@@ -1,0 +1,641 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tome of the Codex — Phase II</title>
+<style>
+  :root{
+    --bg:#0b0f14;
+    --panel:#0e151c;
+    --ink:#cfe6ff;
+    --accent:#7fb1ff;
+    --gold:#ffd97a;
+    --violet:#b08cff;
+    --muted:#94a8be;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:radial-gradient(1200px 900px at 50% 55%, #0f151c 0%, var(--bg) 60%, #06090d 100%);color:#d7e6f8;font-family:Inter,Segoe UI,system-ui,Arial,sans-serif}
+  .layout{display:grid;grid-template-columns: 300px 1fr;grid-template-rows:auto 1fr;gap:14px;max-width:1200px;margin:20px auto;padding:12px}
+  header{grid-column:1/-1;background:linear-gradient(180deg,#0e1620,#0c1219);border:1px solid #1b2834;border-radius:16px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 18px 60px rgba(0,0,0,.45), inset 0 0 80px rgba(0,0,0,.25)}
+  h1{font-size:18px;letter-spacing:.8px;margin:0;color:#e6f2ff}
+  .badge{font-size:12px;color:#9fb8d3;opacity:.9}
+  .left{background:linear-gradient(#0e151c,#0c1218);border:1px solid #1b2834;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:12px}
+  .section{border:1px solid #1f2c39;border-radius:14px;padding:10px 10px 12px;background:radial-gradient(600px 220px at 50% -10%, rgba(160,200,255,.06), transparent), #0c1218}
+  .section h3{margin:0 0 8px;font-size:13px;letter-spacing:.5px;color:#d9e7fb}
+  .chapters button{width:100%;margin:5px 0;padding:10px 10px;border-radius:10px;border:1px solid #243244;background:#0f1721;color:#cfe2fb;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:space-between}
+  .chapters button:hover{border-color:#2b3b4d;background:#121b26}
+  .chapters button.active{outline:2px solid #34506d; background:#122033}
+  .swatch{width:14px;height:14px;border-radius:50%;border:1px solid #314559}
+  .swatch.blue{background:#9dd0ff}
+  .swatch.violet{background:#b08cff}
+  .swatch.gold{background:#ffd97a}
+  .swatch.shadow{background:#556170}
+
+  .controls label{display:block;font-size:12px;color:#a9bed6;margin:10px 0 4px}
+  .controls input[type=range]{width:100%}
+  .controls .row{display:flex;gap:8px}
+  .controls .row > *{flex:1}
+  .btn{padding:9px 11px;border-radius:10px;border:1px solid #2b3b4d;background:#101a25;color:#cfe2fb;cursor:pointer}
+  .btn:hover{background:#132132}
+  .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; background:#0c1520;border:1px solid #2a3b4f;border-radius:6px;padding:2px 6px;font-size:12px;color:#bcd2ea}
+
+  .canvas{background:linear-gradient(#0e141a,#0a1015);border:1px solid #1b2834;border-radius:16px;padding:0;position:relative;overflow:hidden}
+  .toolbar{position:absolute;inset:12px 12px auto auto;display:flex;gap:8px;z-index:2}
+  .toolbar .btn{font-size:12px;padding:7px 10px}
+  .hint{position:absolute;inset:auto 14px 14px 14px;opacity:.7;font-size:12px;color:#a6bacf;line-height:1.4}
+  svg{display:block;width:100%;height:100%;filter: drop-shadow(0 0 5px rgba(140,180,255,.35))}
+  .grain, .grain::before{position:absolute;inset:-50%}
+  .grain{opacity:.10;mix-blend-mode:soft-light;pointer-events:none}
+  .grain::before{
+    content:""; background-image:url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" width=\"400\" height=\"400\">\
+<filter id=\"n\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.95\" numOctaves=\"2\"/></filter>\
+<rect width=\"100%\" height=\"100%\" filter=\"url(%23n)\" opacity=\"0.8\"/></svg>');
+    animation: move 22s linear infinite;
+  }
+  @keyframes move{from{transform:translate3d(0,0,0) scale(2)} to{transform:translate3d(-25%,-25%,0) scale(2)}}
+</style>
+</head>
+<body>
+<div class="layout">
+  <header>
+    <div>
+      <h1>Tome of the Codex — Phase II</h1>
+      <div class="badge">Shortcuts • Auto-Compose • Soundscape</div>
+    </div>
+    <div>
+      <button class="btn" id="exportBtn">Export PNG</button>
+    </div>
+  </header>
+
+  <aside class="left">
+    <div class="section chapters">
+      <h3>Chapters</h3>
+      <button data-chapter="awakening"><span>Awakening</span><span class="swatch blue"></span></button>
+      <button data-chapter="transformation"><span>Transformation</span><span class="swatch violet"></span></button>
+      <button data-chapter="realization"><span>Realization</span><span class="swatch gold"></span></button>
+      <button data-chapter="shadow"><span>Shadow</span><span class="swatch shadow"></span></button>
+    </div>
+
+    <div class="section controls">
+      <h3>Sigil Controls</h3>
+      <label>Rune Count</label>
+      <input id="runeCount" type="range" min="6" max="40" value="18">
+      <div class="row">
+        <div>
+          <label>Entropy (shape variance)</label>
+          <input id="entropy" type="range" min="0" max="100" value="40">
+        </div>
+        <div>
+          <label>Pulse Speed</label>
+          <input id="speed" type="range" min="5" max="200" value="80">
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn" id="newSigil">Generate Sigil</button>
+        <button class="btn" id="saveEntry">Save Entry</button>
+      </div>
+      <div style="font-size:12px;color:#a9bed6;margin-top:8px">
+        <b>Shortcuts</b> — <span class="kbd">Space</span> Play/Pause, <span class="kbd">L</span> Links, <span class="kbd">G</span> Glow, <span class="kbd">N</span> New, <span class="kbd">S</span> Save, <span class="kbd">1-4</span> Chapters
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Auto-Compose</h3>
+      <div class="row">
+        <button class="btn" id="autoToggle">Start</button>
+        <button class="btn" id="autoNow">Compose Now</button>
+      </div>
+      <div style="font-size:12px;color:#a9bed6;margin-top:6px">
+        The Tome will periodically evolve the sigil with smooth transitions.
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Saved Entries</h3>
+      <div id="entriesList" style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto;"></div>
+    </div>
+  </aside>
+
+  <main class="canvas" tabindex="0" id="canvasFocus">
+    <div class="toolbar">
+      <button class="btn" id="playPause">Pause</button>
+      <button class="btn" id="centerGlow">Center Glow</button>
+      <button class="btn" id="linksToggle">Links</button>
+      <button class="btn" id="soundToggle">Sound: Off</button>
+    </div>
+    <svg id="codex" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet" aria-label="Interactive Codex Canvas">
+      <defs>
+        <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#c2e5ff" stop-opacity="1"/>
+          <stop offset="55%" stop-color="#87bfff" stop-opacity=".55"/>
+          <stop offset="100%" stop-color="#5c89ff" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <circle cx="500" cy="500" r="435" fill="none" stroke="#1b2834" stroke-width="22"/>
+      <circle id="coreBg" cx="500" cy="500" r="420" fill="url(#coreGlow)" opacity=".14"/>
+
+      <g id="rings" stroke="#9cc9ff" stroke-width="2" opacity=".55">
+        <circle cx="500" cy="500" r="360"/>
+        <circle cx="500" cy="500" r="275"/>
+        <circle cx="500" cy="500" r="190"/>
+      </g>
+
+      <g id="tri" fill="none" stroke="#bfe4ff" stroke-width="10" stroke-linecap="round" filter="url(#soft)">
+        <path d="M500 260 C 540 330, 540 380, 500 440 C 460 380, 460 330, 500 260 Z"/>
+        <path d="M430 335 C 470 405, 470 455, 430 515 C 390 455, 390 405, 430 335 Z"/>
+        <path d="M570 335 C 610 405, 610 455, 570 515 C 530 455, 530 405, 570 335 Z"/>
+      </g>
+
+      <g id="runes" stroke-linecap="round" stroke-linejoin="round" fill="none"></g>
+      <g id="links" stroke="#7fb1ff" stroke-width="2" opacity=".75"></g>
+    </svg>
+
+    <div class="grain"></div>
+    <div class="hint">
+      Auto-Compose evolves the sigil over time. Sound responds to pulses & chapter mood.
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  const CX=500, CY=500;
+  const svg = document.getElementById('codex');
+  const gRunes = document.getElementById('runes');
+  const gLinks = document.getElementById('links');
+  const tri = document.getElementById('tri');
+  const coreBg = document.getElementById('coreBg');
+  const canvasFocus = document.getElementById('canvasFocus');
+
+  // UI
+  const chapterBtns = [...document.querySelectorAll('[data-chapter]')];
+  const runeCountEl = document.getElementById('runeCount');
+  const entropyEl = document.getElementById('entropy');
+  const speedEl = document.getElementById('speed');
+  const newSigilBtn = document.getElementById('newSigil');
+  const saveBtn = document.getElementById('saveEntry');
+  const entriesList = document.getElementById('entriesList');
+  const playPauseBtn = document.getElementById('playPause');
+  const linksToggleBtn = document.getElementById('linksToggle');
+  const centerGlowBtn = document.getElementById('centerGlow');
+  const exportBtn = document.getElementById('exportBtn');
+  const autoToggleBtn = document.getElementById('autoToggle');
+  const autoNowBtn = document.getElementById('autoNow');
+  const soundToggleBtn = document.getElementById('soundToggle');
+
+  let playing = true;
+  let showLinks = true;
+  let centerGlow = true;
+  let chapter = 'awakening';
+  let autoCompose = false;
+  let nextComposeAt = 0; // ms timestamp
+
+  // Web Audio — basic ambient synth
+  let audioCtx = null;
+  let masterGain = null;
+  let ambient = null;
+  let chime = null;
+  let audioOn = false;
+
+  // Chapter palettes
+  const Pal = {
+    awakening:   { base:'#9bd0ff', accent:'#7fb1ff', core:'#cfe6ff', hue: 205, tones:[220, 440, 660] },
+    transformation:{ base:'#bca3ff', accent:'#9a7dff', core:'#e7ddff', hue: 270, tones:[196, 392, 588] },
+    realization: { base:'#ffd97a', accent:'#ffbe5e', core:'#fff0c8', hue: 48,  tones:[174, 348, 522] },
+    shadow:      { base:'#8da0b3', accent:'#6f8398', core:'#c5d2df', hue: 210, tones:[110, 220, 330] }
+  };
+
+  // Minimal glyph set (no human letters)
+  const GLYPHS = [
+    "M0,0 L10,-20 L20,0",            // spike
+    "M0,-20 L0,10 M-10,0 L10,0",     // cross pillar
+    "M0,-20 L0,10 M0,-6 L12,-16",    // fork
+    "M-10,-10 L10,-10 M0,-20 L0,5",  // staff + bar
+    "M-8,-20 L0,-5 L8,-20 M0,-5 L0,8",// diamond tip
+    "M-8,-10 L8,-10 M-4,0 L4,0",     // twin bars
+    "M0,-20 C 10,-10, 10,0, 0,10 C -10,0, -10,-10, 0,-20", // oval loop
+    "M-8,-18 L8,0 M8,-18 L-8,0",     // crossing
+    "M0,-20 L0,8 M-10,-6 L10,-6",    // T variant
+    "M-10,-20 L10,0 M10,-20 L-10,0", // X tall
+  ];
+
+  // Utility
+  function el(tag, attrs){
+    const n = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for(const k in attrs){ n.setAttribute(k, attrs[k]); }
+    return n;
+  }
+  function rand(a,b){ return a + Math.random()*(b-a); }
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function hsl(h,s,l){ return `hsl(${h} ${s}% ${l}%)`; }
+
+  // Sigil state
+  let runeNodes = [];
+  let links = [];
+  let seed = Math.floor(Math.random()*1e9);
+
+  function sRand(){
+    // very simple LCG for consistency across redraws with same seed
+    seed = (1664525*seed + 1013904223) % 0xffffffff;
+    return seed/0xffffffff;
+  }
+
+  function setChapter(name){
+    chapter = name;
+    chapterBtns.forEach(b=> b.classList.toggle('active', b.dataset.chapter===name));
+    const pal = Pal[chapter];
+    tri.setAttribute('stroke', pal.core);
+    coreBg.setAttribute('opacity', centerGlow? '.14' : '0');
+    document.documentElement.style.setProperty('--accent', pal.accent);
+    document.documentElement.style.setProperty('--ink', pal.base);
+    // retune ambient
+    if(audioOn) tuneAmbient();
+  }
+
+  chapterBtns.forEach(b=> b.addEventListener('click', ()=> setChapter(b.dataset.chapter)));
+  setChapter('awakening');
+
+  function clearSigil(){
+    runeNodes = [];
+    links = [];
+    gRunes.innerHTML = '';
+    gLinks.innerHTML = '';
+  }
+
+  function makeSigil(count, entropy, smooth=false){
+    const pal = Pal[chapter];
+    // prepare new content in a temp group for smooth crossfade
+    const tempRunes = el('g',{});
+    const tempLinks = el('g',{});
+    const rings = [
+      {r: 330, n: Math.round(count*0.45), wobble: 10, width: 5},
+      {r: 245, n: Math.round(count*0.33), wobble: 14, width: 6},
+      {r: 165, n: Math.round(count*0.22), wobble: 18, width: 7},
+    ];
+    let idx = 0;
+    const newNodes = [];
+    rings.forEach((ring, ri)=>{
+      for(let i=0;i<ring.n;i++){
+        const a = (i/ring.n)*Math.PI*2 - Math.PI/2 + (sRand()-0.5)*entropy*0.004;
+        const rr = ring.r + (sRand()-0.5)*entropy*0.6;
+        const x = CX + Math.cos(a)*rr;
+        const y = CY + Math.sin(a)*rr;
+        const g = el('g', {transform:`translate(${x},${y}) rotate(${a*180/Math.PI+90})`});
+        const p = el('path', {
+          d: GLYPHS[(idx+ri*3)%GLYPHS.length],
+          stroke: pal.base, 'stroke-width': ring.width, filter:'url(#soft)'
+        });
+        g.appendChild(p);
+        tempRunes.appendChild(g);
+        newNodes.push({g,p, a, ring, idx});
+        idx++;
+      }
+    });
+    // initial links
+    const newLinks = [];
+    function linkLocal(i,j){
+      if(i===j) return;
+      const n1 = newNodes[i], n2 = newNodes[j];
+      const b1 = n1.g.getCTM(), b2 = n2.g.getCTM();
+      const p1 = {x:b1.e, y:b1.f};
+      const p2 = {x:b2.e, y:b2.f};
+      const mid = {x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2 + (Math.random()*60-30)};
+      const path = el('path', {
+        d:`M ${p1.x},${p1.y} Q ${mid.x},${mid.y} ${p2.x},${p2.y}`,
+        stroke: pal.accent, fill:'none', 'stroke-width':2, opacity:.25
+      });
+      tempLinks.appendChild(path);
+      newLinks.push({path, p1, p2, mid, life: 0.8 + Math.random()*1.8});
+    }
+    for(let k=0;k<Math.max(10, Math.round(count*0.6)); k++){
+      linkLocal(Math.floor(sRand()*newNodes.length), Math.floor(sRand()*newNodes.length));
+    }
+
+    if(!smooth){
+      clearSigil();
+      gRunes.append(...tempRunes.childNodes);
+      gLinks.append(...tempLinks.childNodes);
+      runeNodes = newNodes;
+      links = newLinks;
+      return;
+    }
+
+    // smooth crossfade
+    const oldRunes = gRunes.cloneNode(true);
+    const oldLinks = gLinks.cloneNode(true);
+    // wipe current, insert layered
+    gRunes.innerHTML=''; gLinks.innerHTML='';
+    const groupOld = el('g',{opacity:'1'});
+    const groupNew = el('g',{opacity:'0'});
+    groupOld.append(...oldRunes.childNodes);
+    groupNew.append(...tempRunes.childNodes);
+    gRunes.appendChild(groupOld);
+    gRunes.appendChild(groupNew);
+
+    const linksOld = el('g',{opacity:'1'});
+    const linksNew = el('g',{opacity:'0'});
+    linksOld.append(...oldLinks.childNodes);
+    linksNew.append(...tempLinks.childNodes);
+    gLinks.appendChild(linksOld);
+    gLinks.appendChild(linksNew);
+
+    // animate fade
+    const start = performance.now();
+    const DUR = 900;
+    function fadeTick(now){
+      const t = Math.min(1, (now-start)/DUR);
+      groupOld.setAttribute('opacity', String(1-t));
+      linksOld.setAttribute('opacity', String(1-t));
+      groupNew.setAttribute('opacity', String(t));
+      linksNew.setAttribute('opacity', String(t*0.8));
+      if(t<1){ requestAnimationFrame(fadeTick); }
+      else{
+        // finalize
+        gRunes.innerHTML=''; gLinks.innerHTML='';
+        gRunes.append(...groupNew.childNodes);
+        gLinks.append(...linksNew.childNodes);
+        runeNodes = newNodes;
+        links = newLinks;
+      }
+    }
+    requestAnimationFrame(fadeTick);
+  }
+
+  function generate(smooth=false){
+    seed = Math.floor(Math.random()*1e9);
+    makeSigil(parseInt(runeCountEl.value,10), parseInt(entropyEl.value,10), smooth);
+    // audio cue
+    if(audioOn) pingChime(0.2);
+  }
+  function mutateFromSeed(smooth=true){
+    // subtle mutation of seed
+    seed = (seed + Math.floor(Math.random()*100000+1)) % 0xffffffff;
+    makeSigil(parseInt(runeCountEl.value,10), parseInt(entropyEl.value,10), smooth);
+    if(audioOn) pingChime(0.15);
+  }
+
+  newSigilBtn.addEventListener('click', ()=>generate(true));
+
+  // Save/Load entries (localStorage)
+  function saveEntry(){
+    const entry = {
+      id: 'codex-' + Date.now(),
+      chapter,
+      seed,
+      count: parseInt(runeCountEl.value,10),
+      entropy: parseInt(entropyEl.value,10),
+      speed: parseInt(speedEl.value,10)
+    };
+    const all = JSON.parse(localStorage.getItem('codexEntries') || '[]');
+    all.unshift(entry);
+    localStorage.setItem('codexEntries', JSON.stringify(all));
+    renderEntries();
+  }
+  function renderEntries(){
+    const all = JSON.parse(localStorage.getItem('codexEntries') || '[]');
+    entriesList.innerHTML = '';
+    all.forEach(e=>{
+      const row = document.createElement('div');
+      row.style.display='grid';
+      row.style.gridTemplateColumns='1fr auto auto';
+      row.style.gap='6px';
+      row.style.alignItems='center';
+      row.style.padding='6px';
+      row.style.border='1px solid #223142';
+      row.style.borderRadius='10px';
+      row.style.background='#0f1721';
+      const label = document.createElement('div');
+      label.textContent = `${new Date(parseInt(e.id.split('-')[1],10)).toLocaleString()} • ${e.chapter}`;
+      label.style.fontSize='12px';
+      label.style.color='#bcd0e6';
+      const loadBtn = document.createElement('button');
+      loadBtn.className='btn'; loadBtn.textContent='Load';
+      loadBtn.onclick = ()=>{
+        chapter = e.chapter; setChapter(chapter);
+        seed = e.seed;
+        runeCountEl.value = e.count; entropyEl.value = e.entropy; speedEl.value = e.speed;
+        makeSigil(e.count, e.entropy, true);
+      };
+      const delBtn = document.createElement('button');
+      delBtn.className='btn'; delBtn.textContent='Delete';
+      delBtn.onclick = ()=>{
+        const rest = all.filter(x=>x.id!==e.id);
+        localStorage.setItem('codexEntries', JSON.stringify(rest));
+        renderEntries();
+      };
+      row.appendChild(label); row.appendChild(loadBtn); row.appendChild(delBtn);
+      entriesList.appendChild(row);
+    });
+  }
+  renderEntries();
+  saveBtn.addEventListener('click', saveEntry);
+
+  // Play/Pause
+  playPauseBtn.addEventListener('click', ()=>{
+    playing = !playing;
+    playPauseBtn.textContent = playing ? 'Pause' : 'Play';
+  });
+  // Links toggle
+  linksToggleBtn.addEventListener('click', ()=>{
+    showLinks = !showLinks;
+    gLinks.style.display = showLinks ? 'block' : 'none';
+  });
+  // Core glow toggle
+  centerGlowBtn.addEventListener('click', ()=>{
+    centerGlow = !centerGlow;
+    coreBg.setAttribute('opacity', centerGlow? '.14' : '0');
+  });
+
+  // Export PNG
+  exportBtn.addEventListener('click', ()=>{
+    const xml = new XMLSerializer().serializeToString(svg);
+    const svg64 = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
+    const img = new Image();
+    img.onload = ()=>{
+      const c = document.createElement('canvas');
+      c.width = 2000; c.height = 2000;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#0b0f14'; ctx.fillRect(0,0,c.width,c.height);
+      ctx.drawImage(img, 0,0, c.width, c.height);
+      const url = c.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url; a.download = 'tome_of_the_codex_phase_ii.png';
+      a.click();
+    };
+    img.src = svg64;
+  });
+
+  // Auto-Compose
+  function scheduleNextCompose(ms){
+    nextComposeAt = performance.now() + ms;
+  }
+  autoToggleBtn.addEventListener('click', ()=>{
+    autoCompose = !autoCompose;
+    autoToggleBtn.textContent = autoCompose ? 'Stop' : 'Start';
+    if(autoCompose) scheduleNextCompose(4000 + Math.random()*6000); // 4–10s for demo
+  });
+  autoNowBtn.addEventListener('click', ()=>{
+    autoCompose = true; autoToggleBtn.textContent = 'Stop';
+    mutateFromSeed(true);
+    scheduleNextCompose(4000 + Math.random()*6000);
+  });
+
+  // Keyboard Shortcuts
+  // (Space) play/pause, L links, G glow, N new, S save, 1–4 chapters
+  document.addEventListener('keydown', (e)=>{
+    if(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    if(e.code === 'Space'){ e.preventDefault(); playPauseBtn.click(); }
+    else if(e.key === 'l' || e.key === 'L'){ linksToggleBtn.click(); }
+    else if(e.key === 'g' || e.key === 'G'){ centerGlowBtn.click(); }
+    else if(e.key === 'n' || e.key === 'N'){ generate(true); }
+    else if(e.key === 's' || e.key === 'S'){ saveBtn.click(); }
+    else if(e.key === '1'){ chapterBtns[0].click(); }
+    else if(e.key === '2'){ chapterBtns[1].click(); }
+    else if(e.key === '3'){ chapterBtns[2].click(); }
+    else if(e.key === '4'){ chapterBtns[3].click(); }
+  });
+
+  // Web Audio API Soundscape
+  function initAudio(){
+    if(audioOn) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain(); masterGain.gain.value = 0.0;
+    masterGain.connect(audioCtx.destination);
+    ambient = makeAmbient();
+    chime = makeChime();
+    masterGain.gain.linearRampToValueAtTime(0.25, audioCtx.currentTime + 1.0);
+    audioOn = true;
+  }
+  function stopAudio(){
+    if(!audioOn) return;
+    masterGain.gain.linearRampToValueAtTime(0.0, audioCtx.currentTime + 0.5);
+    setTimeout(()=>{ audioCtx.close(); audioOn=false; audioCtx=null; }, 700);
+  }
+  function tuneAmbient(){
+    if(!audioOn) return;
+    // Retune oscillators to chapter tones
+    const tones = Pal[chapter].tones;
+    ambient.o1.frequency.setValueAtTime(tones[0], audioCtx.currentTime);
+    ambient.o2.frequency.setValueAtTime(tones[1], audioCtx.currentTime);
+    ambient.o3.frequency.setValueAtTime(tones[2], audioCtx.currentTime);
+  }
+  function makeAmbient(){
+    const tones = Pal[chapter].tones;
+    const g = audioCtx.createGain(); g.gain.value = 0.05;
+    g.connect(masterGain);
+    const o1 = audioCtx.createOscillator(); o1.type='sine'; o1.frequency.value = tones[0];
+    const o2 = audioCtx.createOscillator(); o2.type='triangle'; o2.frequency.value = tones[1];
+    const o3 = audioCtx.createOscillator(); o3.type='sine'; o3.frequency.value = tones[2];
+    const lfo = audioCtx.createOscillator(); lfo.type='sine'; lfo.frequency.value = 0.08;
+    const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 0.02;
+    lfo.connect(lfoGain).connect(g.gain);
+    o1.connect(g); o2.connect(g); o3.connect(g);
+    o1.start(); o2.start(); o3.start(); lfo.start();
+    return {g,o1,o2,o3,lfo,lfoGain};
+  }
+  function makeChime(){
+    const g = audioCtx.createGain(); g.gain.value = 0.0; g.connect(masterGain);
+    const o = audioCtx.createOscillator(); o.type='sine'; o.frequency.value = 880;
+    const f = audioCtx.createBiquadFilter(); f.type='bandpass'; f.frequency.value = 1200; f.Q.value=10;
+    o.connect(f).connect(g);
+    o.start();
+    return {g,o,f};
+  }
+  function pingChime(strength=0.2){
+    if(!audioOn) return;
+    const now = audioCtx.currentTime;
+    chime.g.gain.cancelScheduledValues(now);
+    chime.g.gain.setValueAtTime(0.0, now);
+    chime.g.gain.linearRampToValueAtTime(strength, now + 0.01);
+    chime.g.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+    chime.o.frequency.setValueAtTime(660 + Math.random()*480, now);
+  }
+
+  soundToggleBtn.addEventListener('click', ()=>{
+    if(!audioOn){ initAudio(); soundToggleBtn.textContent = 'Sound: On'; }
+    else{ stopAudio(); soundToggleBtn.textContent = 'Sound: Off'; }
+  });
+
+  // Initial generate
+  generate(false);
+
+  // Animation
+  let t0 = performance.now();
+  function tick(now){
+    // Auto compose timing
+    if(autoCompose && now >= nextComposeAt){
+      mutateFromSeed(true);
+      scheduleNextCompose(4000 + Math.random()*6000);
+    }
+
+    if(playing){
+      const t = (now - t0)/1000;
+      const pal = Pal[chapter];
+      const hue = pal.hue;
+      const col = hsl(hue, 90, 70);
+      const col2 = hsl((hue+15)%360, 95, 75);
+
+      // Rune pulse and wobble
+      runeNodes.forEach((n, idx)=>{
+        const sp = (parseInt(speedEl.value,10)/80);
+        const pulse = 0.35 + 0.65*Math.max(0, Math.sin(t*1.6*sp + idx*0.7));
+        n.p.setAttribute('stroke', col);
+        n.p.setAttribute('stroke-width', n.ring.width * (0.8 + 0.4*pulse));
+        const wob = n.ring.wobble*(Math.sin(t*0.7*sp + idx)*0.5);
+        n.g.setAttribute('transform', `translate(${CX + Math.cos(n.a)*(n.ring.r + wob)}, ${CY + Math.sin(n.a)*(n.ring.r + wob)}) rotate(${n.a*180/Math.PI+90})`);
+
+        // Light chime on high pulse peaks
+        if(audioOn && pulse>0.97 && Math.random()<0.02){
+          pingChime(0.08);
+        }
+      });
+
+      // Links fade and respawn
+      for(let i=links.length-1; i>=0; i--){
+        const L = links[i];
+        L.life -= 0.016 * (parseInt(speedEl.value,10)/60);
+        L.path.setAttribute('stroke', col2);
+        L.path.setAttribute('opacity', Math.max(0, L.life));
+        if(L.life<=0){
+          gLinks.removeChild(L.path);
+          links.splice(i,1);
+          // occasional new link
+          if(showLinks && runeNodes.length>1){
+            const a = Math.floor(Math.random()*runeNodes.length);
+            const b = Math.floor(Math.random()*runeNodes.length);
+            if(a!==b){
+              const n1 = runeNodes[a], n2 = runeNodes[b];
+              const b1 = n1.g.getCTM(), b2 = n2.g.getCTM();
+              const p1 = {x:b1.e, y:b1.f};
+              const p2 = {x:b2.e, y:b2.f};
+              const mid = {x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2 + (Math.random()*60-30)};
+              const path = el('path', {
+                d:`M ${p1.x},${p1.y} Q ${mid.x},${mid.y} ${p2.x},${p2.y}`,
+                stroke: col2, fill:'none', 'stroke-width':2, opacity:.25
+              });
+              gLinks.appendChild(path);
+              links.push({path, p1, p2, mid, life: 0.8 + Math.random()*1.8});
+            }
+          }
+        }
+      }
+
+      // Tri breathing
+      const s = 1 + 0.03*Math.sin(t*2.0*(parseInt(speedEl.value,10)/80));
+      tri.setAttribute('transform', `translate(${CX},${CY}) scale(${s}) translate(${-CX},${-CY})`);
+    }
+
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
