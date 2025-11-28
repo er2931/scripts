@@ -1,5 +1,6 @@
 # -----------------------------------------
 # INSTANT WINDOWS VOLUME PRESET SCRIPT
+# Try Windows Run (Win + R)
 # -----------------------------------------
 # Default value (will be overridden by input)
 TARGET_VOLUME = 50  # 0–100
@@ -38,3 +39,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
